@@ -1,6 +1,6 @@
-# Study Progress Tracker
+# Progress Tracker
 
-A gentle little corner of the internet that remembers your study streaks, cheers you on, and never once makes you feel behind.
+A gentle little corner of the internet that remembers your streaks, cheers you on, and never once makes you feel behind.
 
 Pick a subject, start the clock, and let this tracker hold onto your streaks, your sessions, and your small wins — one quiet minute at a time. No pressure, no guilt, just you showing up for yourself.
 
