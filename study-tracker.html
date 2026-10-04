@@ -1,0 +1,850 @@
+<title>Study Progress Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Work+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* ---------------------------------------------------------------------
+   Design plan
+   Layout: a quiet "study desk" — hero stopwatch card up top, three stat
+   tiles, then a two-column working area (subjects + new-topic form on
+   the left, this week's chart + recent sessions on the right).
+   Color: deep indigo dusk (dark-first) / warm paper (light) with a
+   single violet accent; sage = good/done, amber = warning/paused.
+   Type: Fraunces (display, for the greeting + the stopwatch digits)
+   paired with Work Sans (body/UI).
+------------------------------------------------------------------------ */
+:root{
+  --bg:#15131f; --bg-raised:#1b1829; --surface:#221e33; --surface-2:#2a2440;
+  --border:rgba(232,227,250,0.10); --border-strong:rgba(232,227,250,0.18);
+  --text:#ece9f5; --text-dim:#aba4c9; --text-faint:#726c93;
+  --accent:#9c86f0; --accent-strong:#c7b8ff; --accent-soft:rgba(156,134,240,0.16);
+  --good:#86c79a; --good-soft:rgba(134,199,154,0.14);
+  --warn:#e3b25f; --warn-soft:rgba(227,178,95,0.14);
+  --danger:#e2847e; --danger-soft:rgba(226,132,126,0.14);
+  --shadow:0 24px 60px rgba(5,4,12,0.5);
+  --font-display:'Fraunces', Georgia, serif;
+  --font-body:'Work Sans', system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#f7f3ea; --bg-raised:#ffffff; --surface:#ffffff; --surface-2:#f1ebdb;
+    --border:rgba(40,32,20,0.11); --border-strong:rgba(40,32,20,0.2);
+    --text:#241f2e; --text-dim:#5f5775; --text-faint:#8d84a4;
+    --accent:#6c4fd6; --accent-strong:#4f37b0; --accent-soft:rgba(108,79,214,0.1);
+    --good:#2f7a48; --good-soft:rgba(47,122,72,0.1);
+    --warn:#9c6c1f; --warn-soft:rgba(156,108,31,0.1);
+    --danger:#b8443e; --danger-soft:rgba(184,68,62,0.1);
+    --shadow:0 16px 40px rgba(40,32,20,0.12);
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f7f3ea; --bg-raised:#ffffff; --surface:#ffffff; --surface-2:#f1ebdb;
+  --border:rgba(40,32,20,0.11); --border-strong:rgba(40,32,20,0.2);
+  --text:#241f2e; --text-dim:#5f5775; --text-faint:#8d84a4;
+  --accent:#6c4fd6; --accent-strong:#4f37b0; --accent-soft:rgba(108,79,214,0.1);
+  --good:#2f7a48; --good-soft:rgba(47,122,72,0.1);
+  --warn:#9c6c1f; --warn-soft:rgba(156,108,31,0.1);
+  --danger:#b8443e; --danger-soft:rgba(184,68,62,0.1);
+  --shadow:0 16px 40px rgba(40,32,20,0.12);
+  color-scheme: light;
+}
+:root[data-theme="dark"]{
+  --bg:#15131f; --bg-raised:#1b1829; --surface:#221e33; --surface-2:#2a2440;
+  --border:rgba(232,227,250,0.10); --border-strong:rgba(232,227,250,0.18);
+  --text:#ece9f5; --text-dim:#aba4c9; --text-faint:#726c93;
+  --accent:#9c86f0; --accent-strong:#c7b8ff; --accent-soft:rgba(156,134,240,0.16);
+  --good:#86c79a; --good-soft:rgba(134,199,154,0.14);
+  --warn:#e3b25f; --warn-soft:rgba(227,178,95,0.14);
+  --danger:#e2847e; --danger-soft:rgba(226,132,126,0.14);
+  --shadow:0 24px 60px rgba(5,4,12,0.5);
+  color-scheme: dark;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);margin:0;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--font-display);font-weight:500;margin:0;text-wrap:balance}
+p{margin:0}
+button{font-family:inherit;cursor:pointer;color:inherit}
+input,select,textarea{font-family:inherit;color:inherit}
+.tnum{font-variant-numeric:tabular-nums}
+
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px calc(48px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:28px}
+
+/* header */
+.eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent-strong);margin-bottom:6px;font-weight:600}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+header h1{font-size:clamp(28px,4.4vw,44px);line-height:1.08}
+header .sub{color:var(--text-dim);max-width:46ch;margin-top:8px;font-size:14.5px;line-height:1.5}
+.head-actions{display:flex;gap:8px;align-items:center}
+.icon-btn{width:36px;height:36px;border-radius:10px;border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;transition:border-color .15s,background .15s}
+.icon-btn:hover{border-color:var(--border-strong);background:var(--surface-2)}
+.btn{display:inline-flex;align-items:center;gap:7px;border-radius:10px;border:1px solid var(--border);background:var(--surface);padding:9px 14px;font-size:13.5px;font-weight:600;white-space:nowrap;transition:border-color .15s,background .15s,transform .1s}
+.btn:hover{border-color:var(--border-strong);background:var(--surface-2)}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#120f1e}
+.btn-primary:hover{background:var(--accent-strong);border-color:var(--accent-strong)}
+.btn-ghost{background:transparent;border-color:transparent}
+.btn-ghost:hover{background:var(--surface)}
+.btn-sm{padding:5px 10px;font-size:12.5px;border-radius:8px}
+.btn[disabled]{opacity:.45;pointer-events:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px 20px}
+.card-kicker{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-faint);font-weight:600;margin-bottom:6px}
+
+/* hero stopwatch */
+.hero{background:linear-gradient(165deg,var(--surface-2),var(--surface));border:1px solid var(--border-strong);box-shadow:var(--shadow);border-radius:20px;padding:26px 26px;display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,0.95fr);gap:24px;align-items:center}
+.hero .label{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-strong);font-weight:600;margin-bottom:6px}
+.clock{font-family:var(--font-display);font-size:clamp(42px,6vw,64px);line-height:1}
+.hero .hint{color:var(--text-dim);font-size:13.5px;margin-top:8px;max-width:38ch}
+.hero-controls{display:flex;flex-direction:column;gap:10px}
+.picker-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.field{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--text-dim);min-width:0}
+.field>span{font-weight:600}
+.input,select.input{width:100%;background:var(--bg-raised);border:1px solid var(--border);border-radius:9px;padding:9px 10px;font-size:13.5px;color:var(--text)}
+.input:focus-visible,select.input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+textarea.input{resize:vertical;min-height:70px}
+
+/* stat strip */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.stat .num{font-family:var(--font-display);font-size:30px;line-height:1.1}
+.stat .meta{font-size:12px;color:var(--text-faint);margin-top:4px}
+
+/* main grid */
+.main-grid{display:grid;grid-template-columns:minmax(0,1.32fr) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:860px){ .main-grid{grid-template-columns:1fr} .hero{grid-template-columns:1fr} .picker-grid{grid-template-columns:1fr} }
+
+h2.section-title{font-size:19px;margin-bottom:2px}
+.section-sub{color:var(--text-dim);font-size:13.5px;margin-bottom:14px}
+
+.subject-list{display:flex;flex-direction:column;gap:12px}
+.subject-card{display:flex;flex-direction:column;gap:10px}
+.subject-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.subject-name{font-size:15.5px;font-weight:600}
+.tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent-strong);margin-top:4px}
+.bar-track{height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden;margin:2px 0}
+.bar-fill{height:100%;background:var(--accent);border-radius:999px;transition:width .3s ease}
+.subject-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--text-faint)}
+.subtopic-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--border);font-size:13.5px}
+.subtopic-row:first-of-type{border-top:1px solid var(--border);margin-top:2px}
+.subtopic-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.subtopic-name.done{color:var(--text-faint);text-decoration:line-through}
+.subtopic-time{color:var(--text-faint);font-size:12px}
+.row-icon-btn{width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--text-faint);flex-shrink:0}
+.row-icon-btn:hover{background:var(--surface-2);color:var(--text)}
+.check{width:17px;height:17px;border-radius:5px;border:1.5px solid var(--border-strong);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.check.on{background:var(--good);border-color:var(--good)}
+.add-sub-form{display:flex;gap:8px;margin-top:2px}
+.add-sub-form input{flex:1;min-width:0}
+.empty-note{color:var(--text-faint);font-size:13px;padding:4px 0 2px}
+
+.new-subject-form{margin-top:16px;display:flex;flex-direction:column;gap:10px}
+.new-subject-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1.3fr) minmax(0,1.5fr);gap:10px}
+.new-sub-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}
+.hint-small{opacity:.7;font-weight:400}
+.warn-text{font-size:11.5px;color:var(--warn);margin-top:2px}
+
+/* chart */
+.chart-bars{display:flex;align-items:flex-end;gap:8px;height:130px;margin:14px 0 6px}
+.chart-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.chart-val{font-size:10.5px;color:var(--text-faint)}
+.chart-bar{width:100%;border-radius:4px 4px 0 0;background:var(--surface-2);transition:height .3s ease}
+.chart-bar.today{background:var(--accent)}
+.chart-day{font-size:10.5px;letter-spacing:.04em;color:var(--text-faint)}
+
+table.recent{width:100%;border-collapse:collapse;font-size:13px}
+table.recent th{text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint);font-weight:600;padding:0 0 8px;border-bottom:1px solid var(--border)}
+table.recent th:last-child,table.recent td:last-child{text-align:right}
+table.recent td{padding:9px 0;border-bottom:1px solid var(--border);vertical-align:top}
+table.recent tr:last-child td{border-bottom:none}
+.recent-topic{font-weight:600}
+.recent-sub{color:var(--text-faint);font-size:11.5px}
+.verdict-pill{display:inline-block;font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:999px;background:var(--surface-2);color:var(--text-dim)}
+
+/* notes */
+.notes-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.notes-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)}
+.notes-body{padding:14px 16px}
+.notes-yesterday{font-size:12px;color:var(--text-faint);padding:8px 16px;border-bottom:1px solid var(--border);background:var(--surface-2);white-space:pre-line}
+.notes-foot{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-top:1px solid var(--border)}
+.emoji-btn{font-size:16px;padding:3px 6px;border-radius:7px}
+.emoji-btn:hover{background:var(--surface-2)}
+
+/* modals */
+.backdrop{position:fixed;inset:0;background:rgba(8,6,16,.6);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+.dialog{width:min(440px,100%);background:var(--bg-raised);border:1px solid var(--border-strong);border-radius:16px;padding:22px;box-shadow:var(--shadow)}
+.dialog.wide{width:min(600px,100%);max-height:86vh;overflow:auto}
+.dialog-title{font-family:var(--font-display);font-size:21px;margin-bottom:14px}
+.mood-btn{width:100%;justify-content:flex-start;padding:11px 14px;font-size:14px;font-weight:500}
+.mood-btn .em{font-size:17px;margin-right:4px}
+.gentle-note{font-size:13px;color:var(--text-dim);background:var(--surface-2);border-radius:9px;padding:9px 11px;margin-top:4px}
+.dialog-actions{display:flex;justify-content:flex-end;margin-top:14px}
+.quiz-q{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.quiz-q .qtext{font-size:14.5px}
+.quiz-opts{display:flex;flex-wrap:wrap;gap:7px}
+.opt-btn{padding:6px 12px;font-size:12.5px;border-radius:999px;border:1px solid var(--border-strong);background:transparent}
+.opt-btn.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-strong)}
+.quiz-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:4px;flex-wrap:wrap}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--bg-raised);border:1px solid var(--border-strong);box-shadow:var(--shadow);border-radius:999px;padding:9px 18px;font-size:13px;z-index:60;opacity:0;pointer-events:none;transition:opacity .2s, transform .2s}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+
+@media (prefers-reduced-motion: reduce){ *{transition:none !important} }
+</style>
+
+<div class="wrap" id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var KEY = 'study-tracker-v1';
+  var DAY = 86400000;
+
+  var TARGET_LEVELS = [
+    { value:'acquainted', label:'Get acquainted', hours:15 },
+    { value:'comfortable', label:'Comfortable with the basics', hours:25 },
+    { value:'interview', label:'Interview ready', hours:40 },
+    { value:'expert', label:'Become an expert', hours:80 },
+    { value:'maintain', label:"Don't lose touch", hours:10 }
+  ];
+
+  var PRE_MOODS = [
+    { value:'anxious', emoji:'😶‍🌫️', label:'Anxious / overwhelmed' },
+    { value:'low', emoji:'🪫', label:'Low energy' },
+    { value:'steady', emoji:'🔋', label:'Steady' },
+    { value:'focus', emoji:'⚡', label:'High focus' }
+  ];
+
+  var POST_MOODS = [
+    { value:'relieved', emoji:'😌', label:'Relieved / calmer' },
+    { value:'clear', emoji:'🧠', label:'Clearer / accomplished' },
+    { value:'tired', emoji:'🥱', label:'Tired but proud' },
+    { value:'struggling', emoji:'🫠', label:'Still struggling' }
+  ];
+
+  var QUESTIONS = [
+    { id:'q1', text:'What did most of the session go on?', options:[
+      { label:'New material', w:{Deep:2} },
+      { label:'Re-reading notes', w:{Review:2} },
+      { label:'Working problems', w:{Practice:2} }
+    ]},
+    { id:'q2', text:'How did the time run?', options:[
+      { label:'Long unbroken blocks', w:{Deep:2} },
+      { label:'Short bursts', w:{Review:1,Practice:1} }
+    ]},
+    { id:'q3', text:'Did you produce anything?', options:[
+      { label:'Solutions or answers', w:{Practice:2} },
+      { label:'Notes or a summary', w:{Deep:1,Review:1} },
+      { label:'Nothing written', w:{Review:2} }
+    ]},
+    { id:'q4', text:'How often did you look things up?', options:[
+      { label:'Rarely', w:{Practice:1} },
+      { label:'Often', w:{Deep:2} },
+      { label:'Skimming', w:{Review:2} }
+    ]}
+  ];
+
+  var NOTE_EMOJIS = ['📝','💡','✅','🔥','⭐'];
+
+  // ---------- helpers ----------
+  function esc(s){
+    return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function fmt(h){
+    var r = Math.round(h*10)/10;
+    return (r % 1 === 0) ? r.toFixed(0) : r.toFixed(1);
+  }
+  function clockStr(sec){
+    var s = Math.max(0, Math.round(sec));
+    var h = Math.floor(s/3600), m = Math.floor((s%3600)/60), r = s%60;
+    function pad(n){ return String(n).padStart(2,'0'); }
+    return (h>0 ? h+':'+pad(m) : pad(m)) + ':' + pad(r);
+  }
+  function todayKey(){
+    var d = new Date();
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+  function levelByValue(v){
+    var found = null;
+    for (var i=0;i<TARGET_LEVELS.length;i++){ if (TARGET_LEVELS[i].value===v) found = TARGET_LEVELS[i]; }
+    return found || TARGET_LEVELS[2];
+  }
+  function levelLabel(v){ return levelByValue(v).label; }
+
+  // ---------- state ----------
+  var state = loadState();
+
+  function loadState(){
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch(e){ saved = null; }
+    var subjects = (saved && Array.isArray(saved.subjects)) ? saved.subjects : [];
+    return {
+      subjects: subjects,
+      sessions: (saved && Array.isArray(saved.sessions)) ? saved.sessions : [],
+      notesLog: (saved && Array.isArray(saved.notesLog)) ? saved.notesLog : [],
+      pickTopic: subjects[0] ? subjects[0].name : '',
+      pickSub: '0',
+      timer: null,
+      preCheckin: null,
+      postCheckin: null,
+      quiz: null,
+      notesOpen: true
+    };
+  }
+
+  function persist(){
+    try {
+      localStorage.setItem(KEY, JSON.stringify({
+        subjects: state.subjects, sessions: state.sessions, notesLog: state.notesLog
+      }));
+    } catch(e){ /* storage unavailable: app still works for this view */ }
+  }
+
+  function subjectByName(name){
+    for (var i=0;i<state.subjects.length;i++){ if (state.subjects[i].name===name) return state.subjects[i]; }
+    return null;
+  }
+
+  function showToast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._tid);
+    showToast._tid = setTimeout(function(){ t.classList.remove('show'); }, 1800);
+  }
+
+  // ---------- theme ----------
+  function applyTheme(){
+    var saved = null;
+    try { saved = localStorage.getItem('study-tracker-theme'); } catch(e){}
+    if (saved === 'dark' || saved === 'light') document.documentElement.setAttribute('data-theme', saved);
+    else document.documentElement.removeAttribute('data-theme');
+  }
+  function toggleTheme(){
+    var current;
+    try { current = localStorage.getItem('study-tracker-theme'); } catch(e){ current = null; }
+    if (!current) { try { current = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; } catch(e){ current = 'dark'; } }
+    var next = current === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('study-tracker-theme', next); } catch(e){}
+    applyTheme();
+    renderThemeIcon();
+  }
+  function isDarkNow(){
+    var saved = null;
+    try { saved = localStorage.getItem('study-tracker-theme'); } catch(e){}
+    if (saved === 'dark') return true;
+    if (saved === 'light') return false;
+    try { return window.matchMedia('(prefers-color-scheme: dark)').matches; } catch(e){ return true; }
+  }
+  function renderThemeIcon(){
+    var btn = document.getElementById('themeToggle');
+    if (!btn) return;
+    btn.innerHTML = isDarkNow()
+      ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"></circle><path d="M12 2.5v2.4M12 19.1v2.4M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"/></svg>'
+      : '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z"/></svg>';
+  }
+
+  // ---------- derived values ----------
+  function dayBuckets(){
+    var today = new Date(); today.setHours(0,0,0,0);
+    var names = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    var out = [];
+    for (var i=6;i>=0;i--){
+      var start = today.getTime() - i*DAY;
+      var mins = 0;
+      for (var j=0;j<state.sessions.length;j++){
+        var s = state.sessions[j];
+        if (s.at >= start && s.at < start + DAY) mins += s.minutes;
+      }
+      out.push({ hours: mins/60, label: names[new Date(start).getDay()], today: i===0 });
+    }
+    return out;
+  }
+
+  function computeStreak(buckets){
+    var streak = 0;
+    for (var i=buckets.length-1;i>=0;i--){
+      if (buckets[i].hours > 0) streak++;
+      else if (i !== buckets.length-1) break;
+    }
+    return streak;
+  }
+
+  // ---------- timer actions ----------
+  function startTimer(topic, subIdx, mood){
+    var subj = subjectByName(topic);
+    if (!subj || !subj.subtopics[subIdx]){ state.preCheckin = null; render(); return; }
+    state.timer = { topic: topic, subIdx: subIdx, startedAt: Date.now(), preMood: mood || null };
+    state.preCheckin = null;
+    render();
+  }
+
+  function requestStop(){
+    var t = state.timer;
+    if (!t) return;
+    var secs = Math.round((Date.now() - t.startedAt) / 1000);
+    var subName = '';
+    state.subjects = state.subjects.map(function(s){
+      if (s.name !== t.topic) return s;
+      var subtopics = s.subtopics.map(function(x,i){
+        if (i !== t.subIdx) return x;
+        subName = x.name;
+        return Object.assign({}, x, { seconds: x.seconds + secs });
+      });
+      return Object.assign({}, s, { done: Math.min(s.target, s.done + secs/3600), subtopics: subtopics });
+    });
+    state.timer = null;
+    state.postCheckin = { topic: t.topic, sub: subName, secs: secs, preMood: t.preMood || null };
+    persist();
+    render();
+  }
+
+  function commitPostMood(mood){
+    var p = state.postCheckin;
+    if (!p) return;
+    state.postCheckin = null;
+    state.quiz = { topic: p.topic, sub: p.sub, secs: p.secs, answers: {}, preMood: p.preMood, postMood: mood || null };
+    render();
+  }
+
+  function verdictOf(answers){
+    var score = { Deep:0, Review:0, Practice:0 };
+    QUESTIONS.forEach(function(q){
+      var pick = answers[q.id];
+      if (pick == null) return;
+      var w = q.options[pick].w;
+      Object.keys(w).forEach(function(k){ score[k] += w[k]; });
+    });
+    var best = Object.keys(score).sort(function(a,b){ return score[b]-score[a]; });
+    return score[best[0]] === 0 ? 'Deep' : best[0];
+  }
+
+  function commitSession(focus){
+    var q = state.quiz;
+    if (!q) return;
+    state.sessions = [{ subject:q.topic, sub:q.sub, focus:focus, minutes:Math.max(1, Math.round(q.secs/60)), at: Date.now() }].concat(state.sessions);
+    state.quiz = null;
+    persist();
+    render();
+    showToast('Session logged.');
+  }
+
+  // ---------- render ----------
+  var root = document.getElementById('app');
+
+  function render(){
+    var buckets = dayBuckets();
+    var peak = Math.max(1.5, Math.max.apply(null, buckets.map(function(b){return b.hours;})));
+    var streak = computeStreak(buckets);
+    var totalTarget = state.subjects.reduce(function(a,s){return a+s.target;},0) || 1;
+    var totalDone = state.subjects.reduce(function(a,s){return a+s.done;},0);
+    var overallPct = Math.round((totalDone/totalTarget)*100);
+
+    var running = !!state.timer;
+    var liveSecs = running ? Math.round((Date.now() - state.timer.startedAt)/1000) : 0;
+    var runSubj = running ? subjectByName(state.timer.topic) : null;
+    var runSub = runSubj ? runSubj.subtopics[state.timer.subIdx] : null;
+
+    var pickSubjects = subjectByName(state.pickTopic) || state.subjects[0] || null;
+    var pickSubs = pickSubjects ? pickSubjects.subtopics : [];
+    if (pickSubjects && state.pickTopic !== pickSubjects.name) state.pickTopic = pickSubjects.name;
+    var pickSubIdx = (pickSubs[Number(state.pickSub)]) ? Number(state.pickSub) : 0;
+
+    var html = '';
+
+    // header
+    html += '<header>';
+    html += '<div><div class="eyebrow">Study progress</div>';
+    html += '<h1>Welcome back' + (state.subjects.length ? '' : '') + ', let&rsquo;s make some progress today</h1>';
+    html += '<p class="sub">Leave the noise outside. We&rsquo;re only focusing on what feels manageable right now.</p></div>';
+    html += '<div class="head-actions">';
+    html += '<button class="icon-btn" id="themeToggle" data-action="toggle-theme" title="Toggle light / dark"></button>';
+    html += '<button class="btn btn-ghost" data-action="clear-log"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v5h5"/><path d="M4.6 15A8.5 8.5 0 1 0 6 7.2L4 9"/></svg>Clear log</button>';
+    html += '</div></header>';
+
+    // hero stopwatch
+    html += '<section class="hero">';
+    html += '<div><div class="label">' + (running ? 'Studying &middot; ' + esc(state.timer.topic) + ' &middot; ' + esc(runSub ? runSub.name : '') : 'Stopwatch') + '</div>';
+    html += '<div class="clock tnum" id="clockDisplay">' + clockStr(running ? liveSecs : 0) + '</div>';
+    html += '<p class="hint">' + (running ? 'Stop when you finish for the day &mdash; I&rsquo;ll ask a few quick questions.' : (pickSubs.length ? 'Pick a topic and sub-topic, then start.' : 'Add a subject and a sub-topic below, then come back here to start your first session.')) + '</p></div>';
+
+    html += '<div class="hero-controls">';
+    if (!running){
+      if (pickSubs.length){
+        html += '<div class="picker-grid">';
+        html += '<label class="field"><span>Topic</span><select class="input" id="pickTopicSel" data-action="pick-topic">';
+        state.subjects.forEach(function(s){
+          html += '<option value="'+esc(s.name)+'"'+(s.name===pickSubjects.name?' selected':'')+'>'+esc(s.name)+'</option>';
+        });
+        html += '</select></label>';
+        html += '<label class="field"><span>Sub-topic</span><select class="input" id="pickSubSel" data-action="pick-sub">';
+        pickSubs.forEach(function(s,i){
+          html += '<option value="'+i+'"'+(i===pickSubIdx?' selected':'')+'>'+esc(s.done ? s.name + ' (done)' : s.name)+'</option>';
+        });
+        html += '</select></label>';
+        html += '</div>';
+        html += '<button class="btn btn-primary" data-action="start-stopwatch"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z" fill="currentColor"/></svg>Start stopwatch</button>';
+      }
+    } else {
+      html += '<button class="btn btn-primary" data-action="stop-stopwatch"><svg width="14" height="14" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>Stop &amp; log this session</button>';
+    }
+    html += '</div></section>';
+
+    // stats
+    html += '<section class="stats">';
+    html += '<div class="card stat"><div class="card-kicker">Streak</div><div class="num tnum">' + streak + (streak===1?' day':' days') + '</div><div class="meta">consecutive study days</div></div>';
+    html += '<div class="card stat"><div class="card-kicker">Sessions</div><div class="num tnum">' + state.sessions.length + '</div><div class="meta">logged all time</div></div>';
+    html += '<div class="card stat"><div class="card-kicker">Overall</div><div class="num tnum">' + (isFinite(overallPct)?overallPct:0) + '%</div><div class="meta">across ' + state.subjects.length + ' subject' + (state.subjects.length===1?'':'s') + '</div></div>';
+    html += '</section>';
+
+    // main grid
+    html += '<div class="main-grid">';
+
+    // subjects column
+    html += '<section>';
+    html += '<h2 class="section-title">Subjects</h2><p class="section-sub">Topics, their sub-topics, and hours logged against each target.</p>';
+    html += '<div class="subject-list">';
+    if (!state.subjects.length){
+      html += '<div class="card"><p class="empty-note">No subjects yet &mdash; add your first one below.</p></div>';
+    }
+    state.subjects.forEach(function(s){
+      var pct = Math.min(100, Math.round((s.done / s.target) * 100));
+      html += '<div class="card subject-card">';
+      html += '<div class="subject-top"><div><div class="subject-name">'+esc(s.name)+'</div><span class="tag">'+esc(s.tag||'Topic')+'</span></div>';
+      html += '<button class="row-icon-btn" title="Remove subject" data-action="remove-subject" data-subject="'+esc(s.name)+'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V7"/><path d="M6 7l1 12.5A1.5 1.5 0 0 0 8.5 21h7a1.5 1.5 0 0 0 1.5-1.5L18 7"/><path d="M10 11v6M14 11v6"/></svg></button></div>';
+      html += '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%"></div></div>';
+      html += '<div class="subject-meta"><span>'+fmt(s.done)+' / '+s.target+' h</span><span>'+(pct>=100?'Target met':fmt(s.target-s.done)+' h left &middot; '+pct+'%')+'</span></div>';
+
+      s.subtopics.forEach(function(t,i){
+        var live = running && state.timer.topic===s.name && state.timer.subIdx===i;
+        var secs = t.seconds + (live ? liveSecs : 0);
+        html += '<div class="subtopic-row">';
+        html += '<button class="check'+(t.done?' on':'')+'" data-action="toggle-subtopic" data-subject="'+esc(s.name)+'" data-index="'+i+'" title="Mark done">'+(t.done?'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#120f1e" stroke-width="3" stroke-linecap="round"><path d="M4 12.5l5 5L20 6"/></svg>':'')+'</button>';
+        html += '<span class="subtopic-name'+(t.done?' done':'')+'">'+esc(t.name)+'</span>';
+        html += '<span class="subtopic-time tnum">'+clockStr(secs)+'</span>';
+        html += '<button class="row-icon-btn" title="Remove sub-topic" data-action="remove-subtopic" data-subject="'+esc(s.name)+'" data-index="'+i+'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>';
+        html += '</div>';
+      });
+      if (!s.subtopics.length) html += '<p class="empty-note">No sub-topics yet.</p>';
+
+      html += '<form class="add-sub-form" data-action="add-subtopic" data-subject="'+esc(s.name)+'">';
+      html += '<input class="input" name="subtopic" placeholder="Add a sub-topic" autocomplete="off">';
+      html += '<button class="btn btn-secondary btn-sm" type="submit">Add</button>';
+      html += '</form>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    // new subject form
+    html += '<form class="new-subject-form card" data-action="add-subject">';
+    html += '<div class="new-subject-grid">';
+    html += '<label class="field"><span>New topic</span><input class="input" name="name" placeholder="Organic Chemistry" autocomplete="off" required></label>';
+    html += '<label class="field"><span>Tag</span><input class="input" name="tag" placeholder="Exam" autocomplete="off"></label>';
+    html += '<label class="field"><span>Target</span><select class="input" name="target">';
+    TARGET_LEVELS.forEach(function(l){ html += '<option value="'+l.value+'"'+(l.value==='interview'?' selected':'')+'>'+esc(l.label)+'</option>'; });
+    html += '</select></label>';
+    html += '</div>';
+    html += '<div class="new-sub-row">';
+    html += '<label class="field"><span>First sub-topic <span class="hint-small">(add it now to start timing right away)</span></span><input class="input" name="subtopic" placeholder="Nomenclature" autocomplete="off"></label>';
+    html += '<button class="btn btn-primary" type="submit">Add</button>';
+    html += '</div>';
+    html += '<div class="warn-text" id="nameTakenWarning" hidden>You already have a topic with this name.</div>';
+    html += '</form>';
+    html += '</section>';
+
+    // aside
+    html += '<aside style="display:flex;flex-direction:column;gap:20px">';
+    html += '<section class="card"><div class="card-kicker">Last 7 days</div><div class="chart-bars">';
+    buckets.forEach(function(b){
+      var hpct = Math.max(3, Math.round((b.hours/peak)*100));
+      html += '<div class="chart-col"><span class="chart-val tnum">'+(b.hours>0?fmt(b.hours):'')+'</span>';
+      html += '<div class="chart-bar'+(b.today?' today':'')+'" style="height:'+hpct+'%"></div>';
+      html += '<span class="chart-day">'+b.label+'</span></div>';
+    });
+    html += '</div></section>';
+
+    html += '<section><h2 class="section-title">Recent</h2>';
+    if (!state.sessions.length){
+      html += '<p class="empty-note">Nothing logged yet.</p>';
+    } else {
+      html += '<table class="recent"><thead><tr><th>Topic</th><th>Goals</th><th>Time</th></tr></thead><tbody>';
+      state.sessions.slice(0,6).forEach(function(s){
+        var d = Math.floor((Date.now()-s.at)/DAY);
+        var subj = subjectByName(s.subject);
+        var goals = subj ? levelLabel(subj.level) : (subj ? subj.tag : '—');
+        var when = d===0?'today':(d===1?'yesterday':d+' d ago');
+        html += '<tr><td><div class="recent-topic">'+esc(s.subject)+'</div><div class="recent-sub">'+esc(s.sub||'')+'</div></td>';
+        html += '<td><span class="verdict-pill">'+esc(s.focus)+'</span></td>';
+        html += '<td class="tnum">'+s.minutes+' min<br><span class="recent-sub">'+when+'</span></td></tr>';
+      });
+      html += '</tbody></table>';
+    }
+    html += '</section>';
+
+    // notes
+    var today = todayKey();
+    var todayEntry = null;
+    for (var ni=0; ni<state.notesLog.length; ni++){ if (state.notesLog[ni].date===today) todayEntry = state.notesLog[ni]; }
+    var past = state.notesLog.filter(function(n){return n.date!==today;}).sort(function(a,b){return b.date.localeCompare(a.date);});
+    var yesterday = past[0] || null;
+    html += '<section class="notes-card"><div class="notes-head"><strong style="font-size:13.5px">Today&rsquo;s notes</strong></div>';
+    if (yesterday && yesterday.text && !(todayEntry && todayEntry.text)){
+      html += '<div class="notes-yesterday">' + esc(yesterday.text) + '</div>';
+    }
+    html += '<div class="notes-body"><textarea class="input" id="notesArea" placeholder="Quick thoughts, what clicked, what to revisit tomorrow&hellip;">'+esc(todayEntry?todayEntry.text:'')+'</textarea></div>';
+    html += '<div class="notes-foot"><div style="display:flex;gap:2px">';
+    NOTE_EMOJIS.forEach(function(ch){ html += '<button class="emoji-btn" data-action="note-emoji" data-emoji="'+ch+'" type="button">'+ch+'</button>'; });
+    html += '</div><button class="btn btn-ghost btn-sm" data-action="note-clear" type="button">Clear page</button></div>';
+    html += '</section>';
+
+    html += '</aside>';
+    html += '</div>'; // main-grid
+
+    // modals
+    if (state.preCheckin){
+      var pre = state.preCheckin;
+      var nudge = pre.selectedMood === 'anxious' || pre.selectedMood === 'low';
+      html += '<div class="backdrop" data-action="backdrop-noop"><div class="dialog">';
+      html += '<div class="dialog-title">How are you feeling right now?</div><div style="display:flex;flex-direction:column;gap:8px">';
+      PRE_MOODS.forEach(function(m){
+        html += '<button class="btn btn-ghost mood-btn" style="border:1px solid var(--border)" data-action="pre-mood" data-mood="'+m.value+'"><span class="em">'+m.emoji+'</span>'+esc(m.label)+'</button>';
+      });
+      html += '</div>';
+      if (nudge){
+        html += '<div class="gentle-note">That&rsquo;s totally okay. Let&rsquo;s just try five gentle minutes.</div>';
+        html += '<div class="dialog-actions" style="justify-content:flex-start;margin-top:8px"><button class="btn btn-primary" data-action="pre-start-gently">Start gently</button></div>';
+      }
+      html += '<div class="dialog-actions"><button class="btn btn-ghost" data-action="pre-skip">Skip</button></div>';
+      html += '</div></div>';
+    }
+
+    if (state.postCheckin){
+      html += '<div class="backdrop" data-action="backdrop-noop"><div class="dialog">';
+      html += '<div class="dialog-title">Session complete! How do you feel now?</div><div style="display:flex;flex-direction:column;gap:8px">';
+      POST_MOODS.forEach(function(m){
+        html += '<button class="btn btn-ghost mood-btn" style="border:1px solid var(--border)" data-action="post-mood" data-mood="'+m.value+'"><span class="em">'+m.emoji+'</span>'+esc(m.label)+'</button>';
+      });
+      html += '</div><div class="dialog-actions"><button class="btn btn-ghost" data-action="post-skip">Skip</button></div>';
+      html += '</div></div>';
+    }
+
+    if (state.quiz){
+      var q = state.quiz;
+      var qMins = Math.max(1, Math.round(q.secs/60));
+      var verdict = verdictOf(q.answers);
+      html += '<div class="backdrop" data-action="backdrop-noop"><div class="dialog wide">';
+      html += '<div class="card-kicker">'+esc(q.topic)+' &middot; '+esc(q.sub)+' &middot; '+qMins+' min</div>';
+      html += '<h2 style="font-size:23px;margin:4px 0 16px">How did that session go?</h2>';
+      QUESTIONS.forEach(function(qq){
+        html += '<div class="quiz-q"><div class="qtext">'+esc(qq.text)+'</div><div class="quiz-opts">';
+        qq.options.forEach(function(o,i){
+          var on = q.answers[qq.id] === i;
+          html += '<button class="opt-btn'+(on?' on':'')+'" data-action="quiz-answer" data-q="'+qq.id+'" data-i="'+i+'" type="button">'+esc(o.label)+'</button>';
+        });
+        html += '</div></div>';
+      });
+      html += '<div class="quiz-foot"><div style="font-size:13.5px;color:var(--text-dim)">Reads as <span class="tag" style="margin-left:4px">'+verdict+'</span></div>';
+      html += '<div style="display:flex;gap:8px"><button class="btn btn-ghost" data-action="quiz-skip">Skip</button><button class="btn btn-primary" data-action="quiz-save"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6"/></svg>Save session</button></div></div>';
+      html += '</div></div>';
+    }
+
+    root.innerHTML = html;
+    renderThemeIcon();
+
+    // keep a live warning for duplicate subject names as the user types
+    var nameInput = root.querySelector('.new-subject-form input[name="name"]');
+    if (nameInput){
+      nameInput.addEventListener('input', function(){
+        var w = document.getElementById('nameTakenWarning');
+        var taken = state.subjects.some(function(s){ return s.name === nameInput.value.trim(); });
+        w.hidden = !(taken && nameInput.value.trim());
+      });
+    }
+  }
+
+  // ---------- live clock ticking without a full re-render ----------
+  setInterval(function(){
+    if (!state.timer) return;
+    var el = document.getElementById('clockDisplay');
+    if (!el) return;
+    var liveSecs = Math.round((Date.now() - state.timer.startedAt)/1000);
+    el.textContent = clockStr(liveSecs);
+    // also refresh the active sub-topic row's running time
+    var subj = subjectByName(state.timer.topic);
+    if (subj){
+      var rows = root.querySelectorAll('.subtopic-row');
+      var idx = state.timer.subIdx;
+      var t = subj.subtopics[idx];
+      if (t && rows[idx]){
+        var timeEl = rows[idx].querySelector('.subtopic-time');
+        if (timeEl) timeEl.textContent = clockStr(t.seconds + liveSecs);
+      }
+    }
+  }, 1000);
+
+  // ---------- event delegation ----------
+  root.addEventListener('click', function(e){
+    var el = e.target.closest('[data-action]');
+    if (!el) return;
+    var action = el.getAttribute('data-action');
+
+    if (action === 'toggle-theme') toggleTheme();
+    else if (action === 'clear-log'){
+      state.sessions = [];
+      persist(); render();
+      showToast('Session log cleared.');
+    }
+    else if (action === 'remove-subject'){
+      var name = el.getAttribute('data-subject');
+      state.subjects = state.subjects.filter(function(s){ return s.name !== name; });
+      if (state.pickTopic === name) state.pickTopic = state.subjects[0] ? state.subjects[0].name : '';
+      persist(); render();
+    }
+    else if (action === 'toggle-subtopic'){
+      var sname = el.getAttribute('data-subject'), idx = Number(el.getAttribute('data-index'));
+      state.subjects = state.subjects.map(function(s){
+        if (s.name !== sname) return s;
+        return Object.assign({}, s, { subtopics: s.subtopics.map(function(t,i){ return i===idx ? Object.assign({},t,{done:!t.done}) : t; }) });
+      });
+      persist(); render();
+    }
+    else if (action === 'remove-subtopic'){
+      var sname2 = el.getAttribute('data-subject'), idx2 = Number(el.getAttribute('data-index'));
+      state.subjects = state.subjects.map(function(s){
+        if (s.name !== sname2) return s;
+        return Object.assign({}, s, { subtopics: s.subtopics.filter(function(t,i){ return i!==idx2; }) });
+      });
+      persist(); render();
+    }
+    else if (action === 'start-stopwatch'){
+      var sel = document.getElementById('pickTopicSel');
+      var subSel = document.getElementById('pickSubSel');
+      var topic = sel ? sel.value : state.pickTopic;
+      var subIdx = subSel ? Number(subSel.value) : 0;
+      state.pickTopic = topic; state.pickSub = String(subIdx);
+      state.preCheckin = { topic: topic, subIdx: subIdx, selectedMood: null };
+      render();
+    }
+    else if (action === 'stop-stopwatch') requestStop();
+    else if (action === 'pre-mood'){
+      var mood = el.getAttribute('data-mood');
+      var pre = state.preCheckin;
+      if (!pre) return;
+      if (mood === 'anxious' || mood === 'low'){
+        state.preCheckin = Object.assign({}, pre, { selectedMood: mood });
+        render();
+      } else {
+        startTimer(pre.topic, pre.subIdx, mood);
+      }
+    }
+    else if (action === 'pre-start-gently'){
+      var pre2 = state.preCheckin;
+      if (pre2) startTimer(pre2.topic, pre2.subIdx, pre2.selectedMood);
+    }
+    else if (action === 'pre-skip'){
+      var pre3 = state.preCheckin;
+      if (pre3) startTimer(pre3.topic, pre3.subIdx, null);
+    }
+    else if (action === 'post-mood') commitPostMood(el.getAttribute('data-mood'));
+    else if (action === 'post-skip') commitPostMood(null);
+    else if (action === 'quiz-answer'){
+      var qid = el.getAttribute('data-q'), qi = Number(el.getAttribute('data-i'));
+      if (state.quiz) state.quiz.answers[qid] = qi;
+      render();
+    }
+    else if (action === 'quiz-save') commitSession(verdictOf(state.quiz ? state.quiz.answers : {}));
+    else if (action === 'quiz-skip') commitSession('Deep');
+    else if (action === 'note-emoji'){
+      var ch = el.getAttribute('data-emoji');
+      var area = document.getElementById('notesArea');
+      var text = (area ? area.value : '') + ch;
+      saveNote(text);
+      render();
+    }
+    else if (action === 'note-clear'){
+      var tk = todayKey();
+      state.notesLog = state.notesLog.filter(function(n){ return n.date !== tk; });
+      persist(); render();
+    }
+  });
+
+  root.addEventListener('submit', function(e){
+    var form = e.target.closest('[data-action]');
+    if (!form) return;
+    e.preventDefault();
+    var action = form.getAttribute('data-action');
+
+    if (action === 'add-subject'){
+      var fd = new FormData(form);
+      var name = String(fd.get('name')||'').trim();
+      if (!name) return;
+      if (state.subjects.some(function(s){ return s.name === name; })){
+        showToast('You already have a topic called "' + name + '".');
+        return;
+      }
+      var level = levelByValue(String(fd.get('target')||'interview'));
+      var subName = String(fd.get('subtopic')||'').trim();
+      state.subjects = state.subjects.concat([{
+        name: name, tag: String(fd.get('tag')||'').trim() || 'Topic',
+        level: level.value, target: level.hours, done: 0,
+        subtopics: subName ? [{ name: subName, seconds: 0, done: false }] : []
+      }]);
+      state.pickTopic = name; state.pickSub = '0';
+      persist(); render();
+      showToast('Added "' + name + '".');
+    }
+    else if (action === 'add-subtopic'){
+      var sname = form.getAttribute('data-subject');
+      var input = form.querySelector('input[name="subtopic"]');
+      var tname = input ? input.value.trim() : '';
+      if (!tname) return;
+      state.subjects = state.subjects.map(function(s){
+        if (s.name !== sname) return s;
+        return Object.assign({}, s, { subtopics: s.subtopics.concat([{ name: tname, seconds: 0, done: false }]) });
+      });
+      persist(); render();
+    }
+  });
+
+  root.addEventListener('change', function(e){
+    if (e.target.id === 'pickTopicSel'){
+      state.pickTopic = e.target.value;
+      state.pickSub = '0';
+      render();
+    } else if (e.target.id === 'pickSubSel'){
+      state.pickSub = e.target.value;
+    }
+  });
+
+  function saveNote(text){
+    var tk = todayKey();
+    var rest = state.notesLog.filter(function(n){ return n.date !== tk; });
+    state.notesLog = [{ date: tk, text: text, updatedAt: Date.now() }].concat(rest);
+    persist();
+  }
+
+  root.addEventListener('blur', function(e){
+    if (e.target && e.target.id === 'notesArea') saveNote(e.target.value);
+  }, true);
+
+  // react to the OS theme changing live, when the user hasn't made an explicit choice
+  try {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(){
+      var saved = null;
+      try { saved = localStorage.getItem('study-tracker-theme'); } catch(e){}
+      if (!saved) renderThemeIcon();
+    });
+  } catch(e){}
+
+  applyTheme();
+  render();
+})();
+</script>
